@@ -1,5 +1,13 @@
+/*
+ * INTERFACE REACT - roteiro rapido para apresentacao
+ *
+ * Este arquivo transforma o snapshot do servidor em telas: lobby, sorteio,
+ * tabuleiro, turno, perguntas e resultado final. As acoes sempre sao enviadas
+ * para /action; a interface nao decide regras, apenas mostra e solicita.
+ */
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
+// Os tipos abaixo espelham os dados publicados pelo servidor.
 type PawnSkin = "cyan" | "magenta" | "gold";
 type Team = { id:string; name:string; participants:string[]; emoji:string; pawnSkin:PawnSkin; position:number; tokens:number[]; startConfirmed:boolean; connected:boolean };
 type Cell = { position:number; category:"H"|"S"|"R"; color:string };
@@ -12,6 +20,7 @@ type ConnectionConfig = { serverHost:string; tcpPort:number; udpPort:number; loc
 const bridge = "http://127.0.0.1:5175";
 const labels = { H:"Hardware", S:"Software", R:"Redes" };
 
+// Converte a casa numerica em coordenadas percentuais no minimapa em zigue-zague.
 function pinPosition(position:number) {
   if (position <= 10) return { left: 7 + position * 8.6, top: 78 };
   if (position <= 20) return { left: 93 - (position - 11) * (86 / 9), top: 48 };
@@ -38,6 +47,7 @@ function FinalGameCard({ didWin, tied, winners, onReturn }:{ didWin:boolean; tie
   return <div className={`waiting game-over-card ${didWin ? "winner" : "spectator"}`}>{didWin && <Confetti/>}<div className="question-label">{didWin ? (tied ? "EMPATE CONFIRMADO" : "VITÓRIA CONFIRMADA") : "PARTIDA ENCERRADA"}</div><h2>{didWin ? (tied ? "Sua equipe empatou no primeiro lugar!" : "Sua equipe venceu a trilha!") : tied ? `${winners} empataram na liderança.` : `${winners} venceu a partida.`}</h2><p>{didWin ? "Parabéns, a rota foi concluída com sucesso." : "O resultado final foi sincronizado para todas as equipes."}</p><button className="return-lobby-final" onClick={onReturn}>Voltar ao lobby</button></div>;
 }
 
+// Tela do sorteio: as fichas mostram apenas "?" ate o servidor revelar o resultado.
 function DrawOverlay({ draw, teams, ownTeamId, onPick }:{ draw:DrawState; teams:Team[]; ownTeamId?:string; onPick:(cardId:number) => void }) {
   const revealing = draw.phase === "reveal";
   const ownPick = draw.selections.find(selection => selection.teamId === ownTeamId);
@@ -75,6 +85,7 @@ function InstructionsOverlay({ onClose }:{ onClose:() => void }) {
   return <div className="instructions-overlay" role="dialog" aria-modal="true" aria-label="Instruções do jogo"><section className="instructions-panel panel"><button className="instructions-close" type="button" aria-label="Fechar instruções" onClick={onClose}>×</button><div className="instructions-title"><div className="question-label">GUIA DA PARTIDA</div><h2>Como jogar Trilha Redes</h2><p>Do lobby até a vitória, siga o fluxo abaixo.</p></div><div className="instructions-grid">{instructionSteps.map(([title, description], index) => <article key={title}><span>{String(index + 1).padStart(2,"0")}</span><h3>{title}</h3><p>{description}</p></article>)}</div><button className="instructions-done" type="button" onClick={onClose}>Entendi, voltar ao lobby</button></section></div>;
 }
 
+// Componente raiz: concentra estado visual, sincronizacao e roteamento das telas.
 export default function App() {
   const [state, setState] = useState<GameState>({ teams:[], board:[], history:[] });
   const [ownTeamId, setOwnTeamId] = useState<string>();
@@ -99,6 +110,7 @@ export default function App() {
   const takenPawnSkins = useMemo(() => new Set<PawnSkin>((state.teams || []).map(team => team.pawnSkin)), [state.teams]);
   const noPawnAvailable = takenPawnSkins.size >= 3;
 
+  // Abre o estado inicial e a stream SSE para receber atualizacoes em tempo real.
   useEffect(() => {
     fetch(`${bridge}/state`).then(r => r.json()).then(x => { setState(x); setOwnTeamId(x.ownTeamId); }).catch(() => setError("Inicie o processo cliente local na porta 5175."));
     fetch(`${bridge}/config`).then(r => r.json()).then(setConnection).catch(() => undefined);
@@ -117,6 +129,7 @@ export default function App() {
     refresh(); const clock = setInterval(refresh, 500); return () => clearInterval(clock);
   }, [state.deadlineAt]);
   useEffect(() => { if (state.phase !== "ready") setDismissedReadyTeamId(undefined); }, [state.phase]);
+  // Todas as acoes do usuario passam pelo bridge HTTP e chegam ao servidor TCP.
   const action = async (payload:object) => {
     setError("");
     const response = await fetch(`${bridge}/action`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });

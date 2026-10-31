@@ -1,3 +1,9 @@
+/*
+ * CLIENTE/BRIDGE LOCAL - roteiro rapido para apresentacao
+ *
+ * O processo mantem TCP com o servidor, escuta eventos UDP e oferece uma API
+ * HTTP na porta 5175. A interface React usa /state, /events e /action.
+ */
 import net from "node:net";
 import dgram from "node:dgram";
 import http from "node:http";
@@ -13,6 +19,7 @@ let HOST = String(cfg.serverHost || "127.0.0.1");
 const logsDir = path.join(root, "logs");
 fs.mkdirSync(logsDir, { recursive: true });
 const log = (protocol, direction, origin, destination, type) => fs.appendFileSync(path.join(logsDir, `client-${new Date().toISOString().slice(0, 10)}.log`), `${new Date().toISOString()} | ${protocol} | ${direction} | ${origin} -> ${destination} | ${type}\n`);
+// Copia local do ultimo snapshot recebido e identificador da equipe deste cliente.
 let socket, buffer = "", state = { type: "state", gameStarted: false, teams: [], history: [] }, ownTeamId;
 const listeners = new Set();
 const connectionConfig = () => ({ serverHost: HOST, tcpPort: TCP_PORT, udpPort: UDP_PORT, localBridgePort: BRIDGE_PORT });
@@ -29,6 +36,7 @@ else {
 } const encoded = `data: ${JSON.stringify({ ...message, ownTeamId, state })}\n\n`; listeners.forEach(r => r.write(encoded)); }
 function send(msg) { if (!socket || socket.destroyed)
     throw new Error("Cliente TCP não conectado ao servidor."); socket.write(JSON.stringify(msg) + "\n"); log("TCP", "OUT", `client:${BRIDGE_PORT}`, `${HOST}:${TCP_PORT}`, msg.type); }
+// A porta UDP local e dinamica, permitindo varios clientes no mesmo computador.
 const udp = dgram.createSocket("udp4");
 udp.on("message", raw => { try {
     const msg = JSON.parse(raw.toString("utf8"));
@@ -53,11 +61,13 @@ function connect() { if (socket && !socket.destroyed)
         event({ type: "error", message: "Mensagem TCP inválida recebida." });
     }
 } }); socket.on("close", () => event({ type: "connection", connected: false })); socket.on("error", err => event({ type: "error", message: err.message })); }
+// O cliente tambem entrega os arquivos compilados do React.
 const webRoot = path.join(root, "web", "dist");
 const contentTypes = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".glb": "model/gltf-binary", ".ico": "image/x-icon" };
 function serveWeb(pathname, res) { const relative = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, ""); const file = path.resolve(webRoot, relative); if (!file.startsWith(`${webRoot}${path.sep}`))
     return res.writeHead(403).end(); fs.readFile(file, (error, data) => { if (error)
     return res.writeHead(404).end("Interface web nao compilada. Execute npm run build."); res.writeHead(200, { "Content-Type": contentTypes[path.extname(file).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-cache" }).end(data); }); }
+// Bridge HTTP entre o navegador e as conexoes TCP/UDP deste processo.
 const bridge = http.createServer((req, res) => {
     const url = new URL(req.url || "/", `http://localhost:${BRIDGE_PORT}`);
     res.setHeader("Access-Control-Allow-Origin", "*");

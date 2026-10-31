@@ -1,9 +1,21 @@
+/*
+ * SERVIDOR DO JOGO - roteiro rapido para apresentacao
+ *
+ * 1. TCP recebe comandos JSON das equipes e envia snapshots do estado.
+ * 2. O servidor e a fonte oficial da verdade: valida turnos, fichas,
+ *    respostas, sorteio e condicoes de encerramento.
+ * 3. UDP transmite notificacoes de eventos para as equipes.
+ * 4. O sorteio usa cinco fichas ocultas; depois que todas sao escolhidas,
+ *    os valores sao revelados e a ordem dos turnos e calculada.
+ * 5. Os timers impedem que uma equipe bloqueie a partida indefinidamente.
+ */
 import net from "node:net";
 import dgram from "node:dgram";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// H = Historia, S = Sistemas e R = Redes.
 type Category = "H" | "S" | "R";
 type Question = { id: string; category: Category; statement: string; options: string[]; correctIndex: number };
 type Team = { id: string; name: string; participants: string[]; emoji: string; pawnSkin: "cyan" | "magenta" | "gold"; position: number; tokens: number[]; initialTopicChosen: boolean; startConfirmed: boolean; socket: net.Socket; udpPort?: number; address?: string; connected: boolean };
@@ -12,6 +24,7 @@ type Turn = { teamId: string; question?: Question; category?: Category; phase: "
 type DrawPhase = "select" | "reveal";
 type Settings = { tcpPort: number; udpPort: number; boardSize: number; maxRounds: number; totalGameSeconds: number };
 
+// Descobrimos a raiz a partir do arquivo compilado, inclusive quando executado pelo .exe.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "../..");
 const configPath = path.join(root, "config.json");
@@ -26,6 +39,7 @@ const categories: Category[] = ["H", "S", "R"];
 const MAX_TEAMS = 3;
 const colors: Record<Category, string> = { H: "#f5c542", S: "#e95cff", R: "#37e8ff" };
 const board = Array.from({ length: settings.boardSize + 1 }, (_, position) => ({ position, category: categories[position % categories.length], color: colors[categories[position % categories.length]] }));
+// Estado em memoria da partida atual: equipes, conexoes e perguntas ja usadas.
 const teams: Team[] = [];
 const peers = new Set<net.Socket>();
 const usedQuestions = new Set<string>();
@@ -37,21 +51,26 @@ const udp = dgram.createSocket("udp4");
 udp.on("error", error => log("UDP", "ERROR", `server:${settings.udpPort}`, "server", "socket_error", error.message));
 udp.bind(settings.udpPort, () => log("UDP", "LOCAL", `server:${settings.udpPort}`, "server", "listening", String(settings.udpPort)));
 
+// O protocolo TCP usa uma mensagem JSON por linha, facil de separar no cliente.
 function send(socket: net.Socket, message: Message) { if (!socket.destroyed) socket.write(JSON.stringify(message) + "\n"); }
+// Mantem os valores do sorteio escondidos ate a fase de revelacao.
 function drawSnapshot() {
  if (!drawPhase) return undefined;
  const selections = [...drawSelections.entries()].map(([teamId, cardId]) => ({ teamId, cardId, ...(drawPhase === "reveal" ? { value: drawValues[cardId] } : {}) }));
  return { phase: drawPhase, cards: drawValues.map((_, cardId) => { const teamId = drawCardOwners.get(cardId); return { id: cardId, selected: teamId !== undefined, ...(drawPhase === "reveal" && teamId !== undefined ? { teamId, value: drawValues[cardId] } : {}) }; }), selections, order: drawPhase === "reveal" ? drawOrder : undefined };
 }
+// Snapshot e a fotografia publica enviada para todas as telas conectadas.
 function snapshot() { return { type: "state", gameStarted, gameEnded, startVoteActive, board, teams: teams.map(({ socket, ...t }) => ({ ...t, socket: undefined })), currentTeamId: turn?.teamId, phase: turn?.phase, deadlineAt: turn && turn.phase !== "ready" ? turn.startedAt + (turn.phase === "answer" ? 80_000 : 40_000) : undefined, currentCategory: turn?.category, question: turn?.question ? { id: turn.question.id, category: turn.question.category, statement: turn.question.statement, options: turn.question.options } : undefined, token: turn?.token, draw: drawSnapshot(), history, settings: { boardSize: settings.boardSize } }; }
 function broadcast(message: Message) { peers.forEach(socket => send(socket, message)); }
 function sync() { broadcast(snapshot()); }
+// UDP e apenas uma notificacao de evento; o estado confiavel continua no TCP/snapshot.
 function udpNotice(type: string, payload: Record<string, unknown> = {}) { teams.forEach(team => { if (!team.udpPort || !team.address) return; const address = team.address.startsWith("::ffff:") ? team.address.slice(7) : team.address; const msg = Buffer.from(JSON.stringify({ type, ...payload }), "utf8"); udp.send(msg, team.udpPort, address, error => { if (error) log("UDP", "ERROR", `server:${settings.udpPort}`, `${address}:${team.udpPort}`, type, error.message); }); log("UDP", "OUT", `server:${settings.udpPort}`, `${address}:${team.udpPort}`, type); }); }
 function publicTeam(team: Team) { const { socket, ...safe } = team; return safe; }
 function chooseQuestion(category: Category) { const matching = questions.filter(q => q.category === category && !usedQuestions.has(q.id)); const pool = matching.length ? matching : questions.filter(q => q.category === category); const q = pool[Math.floor(Math.random() * pool.length)]; usedQuestions.add(q.id); return q; }
 function shuffle<T>(items: T[]) { return [...items].sort(() => Math.random() - 0.5); }
 function drawParticipants() { return teams.filter(team => team.connected); }
 function allDrawsSelected() { const participants = drawParticipants(); return participants.length > 0 && participants.every(team => drawSelections.has(team.id)); }
+// Quando todas as equipes escolheram, revela os valores e cria a ordem dos turnos.
 function resolveDraw() {
  if (drawPhase !== "select" || !allDrawsSelected()) return;
  const participants = drawParticipants().filter(team => drawSelections.has(team.id));
@@ -66,6 +85,7 @@ function resolveDraw() {
  sync();
  drawTimer = setTimeout(() => { drawPhase = undefined; drawTimer = undefined; prepareTurn(); }, 3_500);
 }
+// Inicia o sorteio com cinco fichas ocultas e limpa selecoes antigas.
 function beginDraw() {
  drawPhase = "select";
  drawTimer = undefined;
@@ -90,6 +110,7 @@ function activateTurn(team: Team) { if (!turn || turn.phase !== "ready") return;
 function finishGame() { if (gameEnded) return; gameEnded = true; if (turn?.timer) clearTimeout(turn.timer); if (gameTimer) clearTimeout(gameTimer); if (drawTimer) clearTimeout(drawTimer); drawTimer = undefined; drawPhase = undefined; const max = Math.max(...teams.map(t => t.position)); const winners = teams.filter(t => t.position === max).map(publicTeam); history.unshift(winners.length === 1 ? `${winners[0].name} venceu a partida!` : "A partida terminou em empate."); log("GAME", "LOCAL", "server", "game", "game_end", winners.map(w => w.name).join(", ")); udpNotice("game_end", { winners }); broadcast({ type: "game_over", winners, ranking: [...teams].sort((a,b) => b.position-a.position).map(publicTeam) }); sync(); }
 function activateGame() { startVoteActive = false; gameStarted = true; history.unshift("Partida iniciada com aprovação de todas as equipes."); log("GAME", "LOCAL", "server", "game", "game_start", `${teams.length} teams`); udpNotice("game_start"); gameTimer = setTimeout(() => finishGame(), settings.totalGameSeconds * 1000); beginDraw(); }
 function resetToLobby() { if (turn?.timer) clearTimeout(turn.timer); if (gameTimer) clearTimeout(gameTimer); if (drawTimer) clearTimeout(drawTimer); broadcast({ type: "lobby_reset" }); log("GAME", "LOCAL", "server", "game", "lobby_reset"); teams.length = 0; usedQuestions.clear(); history.length = 0; gameStarted = false; gameEnded = false; startVoteActive = false; currentIndex = 0; rounds = 0; turn = undefined; gameTimer = undefined; drawTimer = undefined; drawPhase = undefined; drawValues = []; drawSelections.clear(); drawCardOwners.clear(); drawOrder = []; turnOrder = []; turnOrderIndex = 0; }
+// Roteador de comandos: toda mudanca de estado passa por estas validacoes.
 function handle(team: Team | undefined, msg: Message, socket: net.Socket) {
  if (!msg || typeof msg.type !== "string") return send(socket, { type: "error", message: "Mensagem inválida." });
  if (msg.type === "register") {
@@ -113,6 +134,7 @@ function handle(team: Team | undefined, msg: Message, socket: net.Socket) {
  send(socket, { type: "error", message: "Tipo de mensagem desconhecido." });
 }
 
+// Cada conexao recebe um snapshot inicial e depois atualizacoes em tempo real.
 const server = net.createServer(socket => {
  peers.add(socket); socket.setEncoding("utf8"); send(socket, snapshot()); let buffer = "";
  socket.on("data", (chunk: string) => { buffer += chunk; let i; while ((i = buffer.indexOf("\n")) >= 0) { const line = buffer.slice(0, i).trim(); buffer = buffer.slice(i + 1); if (!line) continue; try { const msg = JSON.parse(line) as Message; const team = teams.find(t => t.id === (socket as net.Socket & {teamId?: string}).teamId); log("TCP", "IN", String(socket.remoteAddress), "server", msg.type); handle(team, msg, socket); } catch { send(socket, { type: "error", message: "JSON malformado." }); log("TCP", "IN", String(socket.remoteAddress), "server", "malformed"); } } });
