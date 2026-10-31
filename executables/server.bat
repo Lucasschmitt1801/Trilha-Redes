@@ -17,6 +17,14 @@ if not exist "server\dist\index.js" (
   exit /b 1
 )
 
+powershell -NoProfile -Command "$ok=Test-NetConnection 127.0.0.1 -Port 4000 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($ok) { exit 1 } else { exit 0 }" >nul 2>&1
+if errorlevel 1 (
+  echo O servidor ja esta rodando na porta TCP 4000.
+  echo Use a instancia existente e nao inicie outro servidor.
+  pause
+  exit /b 0
+)
+
 echo Iniciando servidor Trilha Redes...
 node "server\dist\index.js"
 set "exitCode=%ERRORLEVEL%"

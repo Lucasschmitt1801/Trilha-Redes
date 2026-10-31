@@ -305,4 +305,5 @@ const server = net.createServer(socket => {
     });
     socket.on("error", () => undefined);
 });
+server.on("error", error => { console.error(`Servidor nao pode abrir a porta TCP ${settings.tcpPort}: ${error.message}`); log("TCP", "ERROR", `server:${settings.tcpPort}`, "server", "socket_error", error.message); process.exit(1); });
 server.listen(settings.tcpPort, () => { console.log(`Trilha Redes server TCP ${settings.tcpPort}; UDP ${settings.udpPort}`); log("TCP", "LOCAL", "server", "server", "listening", String(settings.tcpPort)); });

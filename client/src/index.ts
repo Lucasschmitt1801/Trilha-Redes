@@ -38,4 +38,5 @@ const bridge = http.createServer((req, res) => {
  if (url.pathname === "/action" && req.method === "POST") { let body=""; req.on("data", c => body += c); req.on("end", () => { try { const action = JSON.parse(body) as Msg; if (action.type === "register") { connect(); const udpPort = (udp.address() as { port: number }).port; setTimeout(() => { try { send({ ...action, udpPort }); res.writeHead(202).end(JSON.stringify({ok:true})); } catch (e) { res.writeHead(503).end(JSON.stringify({ok:false,error:(e as Error).message})); } }, 120); } else { send(action); res.writeHead(202).end(JSON.stringify({ok:true})); } } catch (e) { res.writeHead(400).end(JSON.stringify({ok:false,error:(e as Error).message})); } }); return; }
  return serveWeb(url.pathname, res);
 });
+bridge.on("error", error => { console.error(`Cliente nao pode abrir a porta HTTP ${BRIDGE_PORT}: ${error.message}`); log("HTTP", "ERROR", `client:${BRIDGE_PORT}`, "client", "socket_error"); process.exit(1); });
 bridge.listen(BRIDGE_PORT, () => console.log(`Interface local: http://127.0.0.1:${BRIDGE_PORT} → ${HOST}:${TCP_PORT}`));

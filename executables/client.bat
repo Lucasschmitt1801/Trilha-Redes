@@ -24,6 +24,14 @@ if not exist "web\dist\index.html" (
   exit /b 1
 )
 
+powershell -NoProfile -Command "$ok=Test-NetConnection 127.0.0.1 -Port 5175 -InformationLevel Quiet -WarningAction SilentlyContinue; if ($ok) { exit 1 } else { exit 0 }" >nul 2>&1
+if errorlevel 1 (
+  echo O cliente ja esta rodando na porta HTTP 5175.
+  echo Use http://127.0.0.1:5175 e nao inicie outro cliente.
+  pause
+  exit /b 0
+)
+
 echo Iniciando cliente Trilha Redes...
 node "client\dist\index.js"
 set "exitCode=%ERRORLEVEL%"

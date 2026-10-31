@@ -123,4 +123,5 @@ const bridge = http.createServer((req, res) => {
     }
     return serveWeb(url.pathname, res);
 });
+bridge.on("error", error => { console.error(`Cliente nao pode abrir a porta HTTP ${BRIDGE_PORT}: ${error.message}`); log("HTTP", "ERROR", `client:${BRIDGE_PORT}`, "client", "socket_error"); process.exit(1); });
 bridge.listen(BRIDGE_PORT, () => console.log(`Interface local: http://127.0.0.1:${BRIDGE_PORT} → ${HOST}:${TCP_PORT}`));
