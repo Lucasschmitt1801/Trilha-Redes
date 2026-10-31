@@ -1,0 +1,14 @@
+{
+  "name": "trilha-redes",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["server", "client", "web"],
+  "scripts": {
+    "build": "npm run build -w server && npm run build -w client && npm run build -w web",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "dev:web": "npm run dev -w web",
+    "start:server": "npm run start -w server",
+    "start:client": "npm run start -w client"
+  }
+}

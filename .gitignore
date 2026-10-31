@@ -1,0 +1,38 @@
+# Dependencias instaladas
+node_modules/
+
+# Builds regeneraveis do TypeScript e Vite
+dist/
+**/dist/
+# Os executaveis Windows usam estes builds compilados ao lado deles.
+!server/dist/
+!server/dist/**
+!client/dist/
+!client/dist/**
+
+# Logs de execucao e validacao
+logs/*.log
+
+# Configuracao local; o repositorio mantem apenas o exemplo
+config.json
+.env
+.env.*
+!.env.example
+
+# Arquivos temporarios de testes locais
+validate-*.mjs
+*.tmp
+*.temp
+*.bak
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Estado local das ferramentas de design
+.impeccable/
+
+# Metadata Git temporario usado apenas neste ambiente
+git-meta-temp/

@@ -1,0 +1,6 @@
+{
+  "serverHost": "127.0.0.1",
+  "boardSize": 30,
+  "maxRounds": 50,
+  "totalGameSeconds": 3600
+}
