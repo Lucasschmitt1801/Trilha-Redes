@@ -9,6 +9,8 @@ dist/
 !server/dist/**
 !client/dist/
 !client/dist/**
+!web/dist/
+!web/dist/**
 
 # Executaveis e fontes auxiliares de empacotamento
 executables/

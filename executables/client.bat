@@ -17,6 +17,13 @@ if not exist "client\dist\index.js" (
   exit /b 1
 )
 
+if not exist "web\dist\index.html" (
+  echo Interface web nao compilada: web\dist\index.html
+  echo Execute npm install e npm run build na raiz do projeto.
+  pause
+  exit /b 1
+)
+
 echo Iniciando cliente Trilha Redes...
 node "client\dist\index.js"
 set "exitCode=%ERRORLEVEL%"

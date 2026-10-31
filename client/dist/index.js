@@ -53,6 +53,11 @@ function connect() { if (socket && !socket.destroyed)
         event({ type: "error", message: "Mensagem TCP inválida recebida." });
     }
 } }); socket.on("close", () => event({ type: "connection", connected: false })); socket.on("error", err => event({ type: "error", message: err.message })); }
+const webRoot = path.join(root, "web", "dist");
+const contentTypes = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".glb": "model/gltf-binary", ".ico": "image/x-icon" };
+function serveWeb(pathname, res) { const relative = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, ""); const file = path.resolve(webRoot, relative); if (!file.startsWith(`${webRoot}${path.sep}`))
+    return res.writeHead(403).end(); fs.readFile(file, (error, data) => { if (error)
+    return res.writeHead(404).end("Interface web nao compilada. Execute npm run build."); res.writeHead(200, { "Content-Type": contentTypes[path.extname(file).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-cache" }).end(data); }); }
 const bridge = http.createServer((req, res) => {
     const url = new URL(req.url || "/", `http://localhost:${BRIDGE_PORT}`);
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -116,6 +121,6 @@ const bridge = http.createServer((req, res) => {
         } });
         return;
     }
-    res.writeHead(404).end();
+    return serveWeb(url.pathname, res);
 });
 bridge.listen(BRIDGE_PORT, () => console.log(`Interface local: http://127.0.0.1:${BRIDGE_PORT} → ${HOST}:${TCP_PORT}`));

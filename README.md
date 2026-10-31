@@ -31,7 +31,8 @@ Navegador React <-> HTTP/SSE local <-> Cliente Node <-> TCP JSON Lines <-> Servi
 | Servidor do jogo | TCP | 4000 | Fixa |
 | Avisos do servidor | UDP | 4001 | Fixa no servidor; cada cliente informa sua porta UDP local no cadastro |
 | Ponte local cliente-interface | HTTP/SSE | 5175 | Fixa, somente na maquina do cliente |
-| Interface Vite | HTTP | 5173 | Padrao do Vite em desenvolvimento |
+| Interface web embutida no cliente | HTTP | 5175 | Servida pelo cliente local |
+| Interface Vite | HTTP | 5173 | Opcional, somente para desenvolvimento |
 
 O IP ou hostname do servidor e configurado no botao **Configurar** do lobby. Em outra maquina da mesma LAN, informe o IP LAN da maquina que executa o servidor, por exemplo `192.168.1.50`.
 
@@ -56,11 +57,11 @@ npm run start:client
 npm run dev:web
 ```
 
-Abra o endereco exibido pelo Vite. Cadastre uma equipe com nome, participantes e um peao exclusivo. Para demonstracao com tres equipes, abra tres instancias de cliente/interface e use peoes distintos.
+Abra `http://127.0.0.1:5175` depois de iniciar o cliente. O cliente serve a interface web compilada nessa mesma porta; `npm run dev:web` continua disponível apenas para desenvolvimento. Cadastre uma equipe com nome, participantes e um peao exclusivo. Para demonstracao com tres equipes, abra tres instancias de cliente/interface e use peoes distintos.
 
 ### Executaveis Windows
 
-Os launchers `executables/server.exe` e `executables/client.exe` iniciam os modulos compilados do servidor e do cliente. As versoes `executables/server.bat` e `executables/client.bat` sao recomendadas para testes, pois mantem a janela aberta e mostram erros como porta ocupada. Todos usam o Node.js instalado no sistema e devem permanecer dentro desta estrutura de projeto, com `questions.json`, `config.json` e `logs/` na raiz.
+Os launchers `executables/server.exe` e `executables/client.exe` iniciam os modulos compilados do servidor e do cliente. As versoes `executables/server.bat` e `executables/client.bat` sao recomendadas para testes, pois mantem a janela aberta e mostram erros como porta ocupada. Depois de iniciar os dois, abra `http://127.0.0.1:5175`; nao e necessario iniciar o Vite separadamente. Todos usam o Node.js instalado no sistema e devem permanecer dentro desta estrutura de projeto, com `questions.json`, `config.json` e `logs/` na raiz.
 
 ## Configuracao da partida
 
