@@ -4,11 +4,10 @@ node_modules/
 # Builds regeneraveis do TypeScript e Vite
 dist/
 **/dist/
-# Os executaveis Windows usam estes builds compilados ao lado deles.
-!server/dist/
-!server/dist/**
-!client/dist/
-!client/dist/**
+
+# Executaveis e fontes auxiliares de empacotamento
+executables/
+packaging/
 
 # Logs de execucao e validacao
 logs/*.log
@@ -33,6 +32,12 @@ Thumbs.db
 
 # Estado local das ferramentas de design
 .impeccable/
+
+# Relatorios e artefatos de trabalho local
+DESIGN.md
+PRODUCT.md
+TESTES.md
+RELATORIO_CONTINUIDADE.md
 
 # Metadata Git temporario usado apenas neste ambiente
 git-meta-temp/
