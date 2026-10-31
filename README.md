@@ -60,7 +60,7 @@ Abra o endereco exibido pelo Vite. Cadastre uma equipe com nome, participantes e
 
 ### Executaveis Windows
 
-Os launchers `executables/server.exe` e `executables/client.exe` iniciam os modulos compilados do servidor e do cliente. Eles usam o Node.js instalado no sistema e devem permanecer dentro desta estrutura de projeto, com `questions.json`, `config.json` e `logs/` na raiz.
+Os launchers `executables/server.exe` e `executables/client.exe` iniciam os modulos compilados do servidor e do cliente. As versoes `executables/server.bat` e `executables/client.bat` sao recomendadas para testes, pois mantem a janela aberta e mostram erros como porta ocupada. Todos usam o Node.js instalado no sistema e devem permanecer dentro desta estrutura de projeto, com `questions.json`, `config.json` e `logs/` na raiz.
 
 ## Configuracao da partida
 

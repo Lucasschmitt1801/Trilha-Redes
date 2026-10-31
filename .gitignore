@@ -15,6 +15,8 @@ executables/
 !executables/
 executables/*
 !executables/*.exe
+!executables/server.bat
+!executables/client.bat
 packaging/
 
 # Logs de execucao e validacao
