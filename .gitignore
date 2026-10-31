@@ -4,9 +4,17 @@ node_modules/
 # Builds regeneraveis do TypeScript e Vite
 dist/
 **/dist/
+# Dependencias dos executaveis Windows
+!server/dist/
+!server/dist/**
+!client/dist/
+!client/dist/**
 
 # Executaveis e fontes auxiliares de empacotamento
 executables/
+!executables/
+executables/*
+!executables/*.exe
 packaging/
 
 # Logs de execucao e validacao
